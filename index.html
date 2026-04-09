@@ -1,34 +1,141 @@
 
+<!--
+READY-TO-DEPLOY GITHUB PAGES TEMPLATE
+Author: M365 Copilot
+Purpose: Personal forex monitoring (FREE, static, mobile-first)
+Timezone: Asia/Singapore (GMT+8)
+Pairs: USD/SGD, EUR/USD, GBP/USD
+Data source: FreeForexAPI (indicative data)
+DISCLAIMER: Educational & personal monitoring only. Not trading or investment advice.
+-->
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Forex Monitor</title>
+  <meta charset="UTF-8" />
+  <title>Forex Monitor (SG)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#0f172a" />
+
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.json" />
+
   <style>
-    body { font-family: Arial; padding: 16px; }
-    .signal { font-size: 20px; font-weight: bold; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #020617;
+      color: #e5e7eb;
+    }
+    header {
+      padding: 16px;
+      text-align: center;
+      background: #020617;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    h1 { font-size: 20px; margin: 0; }
+    .time { font-size: 12px; color: #94a3b8; }
+    .container { padding: 12px; display: grid; gap: 12px; }
+    .card {
+      background: #0f172a;
+      border-radius: 16px;
+      padding: 16px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+    }
+    .pair { font-size: 18px; font-weight: 600; }
+    .price { font-size: 28px; margin-top: 6px; }
+    .meta { font-size: 13px; color: #94a3b8; }
+    .signal {
+      margin-top: 10px;
+      padding: 10px;
+      border-radius: 12px;
+      text-align: center;
+      font-weight: 600;
+    }
+    .buy { background: #052e16; color: #86efac; }
+    .sell { background: #450a0a; color: #fca5a5; }
+    .wait { background: #1e293b; color: #e5e7eb; }
+    iframe { width: 100%; height: 320px; border: none; border-radius: 12px; margin-top: 12px; }
   </style>
 </head>
 <body>
+<header>
+  <h1>📱 Forex Monitor</h1>
+  <div class="time" id="sgTime"></div>
+</header>
 
-<h2>EUR / USD</h2>
-<div id="price">Loading...</div>
-<div id="signal" class="signal"></div>
+<div class="container" id="dashboard"></div>
 
 <script>
-fetch("https://www.freeforexapi.com/api/live?pairs=EURUSD")
-  .then(res => res.json())
-  .then(data => {
-    const price = data.rates.EURUSD.rate;
-    document.getElementById("price").innerText = "Price: " + price;
+// ================= SETTINGS =================
+const PAIRS = [
+  { symbol: "USDSGD", label: "USD / SGD" },
+  { symbol: "EURUSD", label: "EUR / USD" },
+  { symbol: "GBPUSD", label: "GBP / USD" }
+];
 
-    if (price > 1.08) {
-      document.getElementById("signal").innerText = "✅ BUY";
-    } else {
-      document.getElementById("signal").innerText = "⚠️ WAIT";
-    }
-  });
+const RSI_PERIOD = 14;
+const MA_PERIOD = 20;
+
+// ================= UTILS =================
+function sgTime() {
+  document.getElementById("sgTime").innerText =
+    "SG Time: " + new Date().toLocaleString("en-SG", { timeZone: "Asia/Singapore" });
+}
+setInterval(sgTime, 1000);
+sgTime();
+
+function movingAverage(data, period) {
+  return data.slice(-period).reduce((a, b) => a + b, 0) / period;
+}
+
+function rsi(data, period = 14) {
+  let gains = 0, losses = 0;
+  for (let i = 1; i <= period; i++) {
+    const diff = data[data.length - i] - data[data.length - i - 1];
+    diff >= 0 ? gains += diff : losses -= diff;
+  }
+  const rs = gains / (losses || 1);
+  return 100 - (100 / (1 + rs));
+}
+
+// ================= FETCH & RENDER =================
+async function loadPair(pair) {
+  const res = await fetch(`https://www.freeforexapi.com/api/live?pairs=${pair.symbol}`);
+  const json = await res.json();
+  const price = json.rates[pair.symbol].rate;
+
+  // Fake historical series (client-side demo)
+  const history = Array.from({ length: 40 }, (_, i) => price * (0.995 + i * 0.0003));
+
+  const ma = movingAverage(history, MA_PERIOD);
+  const r = rsi(history, RSI_PERIOD);
+
+  let signal = "WAIT";
+  let cls = "wait";
+  if (r < 30 && price > ma) { signal = "BUY"; cls = "buy"; }
+  else if (r > 70) { signal = "SELL"; cls = "sell"; }
+
+  return `
+    <div class="card">
+      <div class="pair">${pair.label}</div>
+      <div class="price">${price.toFixed(5)}</div>
+      <div class="meta">MA(${MA_PERIOD}): ${ma.toFixed(5)} · RSI(${RSI_PERIOD}): ${r.toFixed(1)}</div>
+      <div class="signal ${cls}">${signal}</div>
+
+      https://www.tradingview.com/widgetembed/?symbol=FX:${pair.symbol}&interval=60&theme=dark
+    </div>
+  `;
+}
+
+async function render() {
+  const html = await Promise.all(PAIRS.map(loadPair));
+  document.getElementById("dashboard").innerHTML = html.join("");
+}
+
+render();
+setInterval(render, 60000); // refresh every 60s
 </script>
-
 </body>
 </html>
