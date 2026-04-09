@@ -1,30 +1,34 @@
+
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Forex Monitor</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css
+  <title>Forex Monitor</title>
+  <style>
+    body { font-family: Arial; padding: 16px; }
+    .signal { font-size: 20px; font-weight: bold; }
+  </style>
 </head>
+<body>
 
-<body class="bg-light">
-<div class="container mt-4">
-  <div class="card shadow text-center">
-    <div class="card-body">
+<h2>EUR / USD</h2>
+<div id="price">Loading...</div>
+<div id="signal" class="signal"></div>
 
-      <h4>EUR / USD</h4>
-      <h5>Price: <span id="price">1.0865</span></h5>
+<script>
+fetch("https://www.freeforexapi.com/api/live?pairs=EURUSD")
+  .then(res => res.json())
+  .then(data => {
+    const price = data.rates.EURUSD.rate;
+    document.getElementById("price").innerText = "Price: " + price;
 
-      <p>MA20: <span id="ma20">1.0830</span></p>
-      <p>MA50: <span id="ma50">1.0785</span></p>
-      <p>RSI: <span id="rsi">38</span></p>
+    if (price > 1.08) {
+      document.getElementById("signal").innerText = "✅ BUY";
+    } else {
+      document.getElementById("signal").innerText = "⚠️ WAIT";
+    }
+  });
+</script>
 
-      <hr>
-      <h5 id="signal" class="fw-bold"></h5>
-
-    </div>
-  </div>
-</div>
-
-app.js
 </body>
 </html>
